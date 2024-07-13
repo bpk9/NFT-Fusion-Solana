@@ -7,15 +7,13 @@ declare_id!("5gJMGxawUbdqfRpdVKj1eJrPfgMQ1Rrroa5WEoidLWQU");
 pub mod nft_fusion_solana {
     use super::*;
 
-    pub fn mint_nft(ctx: Context<MintNFT>) -> Result<()> {
-        let cpi_accounts = MintTo {
+    pub fn mint(ctx: Context<MintNFT>) -> Result<()> {
+        // Mint the NFT 
+        token::mint_to(CpiContext::new(ctx.accounts.token_program.to_account_info(), MintTo {
             mint: ctx.accounts.mint.to_account_info(),
             to: ctx.accounts.token_account.to_account_info(),
             authority: ctx.accounts.signer.to_account_info(),
-        };
-        let cpi_program = ctx.accounts.token_program.to_account_info();
-        let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts);
-        token::mint_to(cpi_ctx, 1)?;
+        }), 1)?;
 
         Ok(())
     }

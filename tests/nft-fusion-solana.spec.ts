@@ -46,7 +46,7 @@ describe('nft-fusion-solana', () => {
 
         // Mint the NFT
         const mintTx = await program.methods
-            .mintNft()
+            .mint()
             .accounts({
                 mint: mint,
                 signer: provider.wallet.publicKey,
