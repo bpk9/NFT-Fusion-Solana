@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token::{self, Mint, TokenAccount, Token, MintTo};
+use anchor_spl::token::{ self, Mint, MintTo, Token, TokenAccount };
 
 declare_id!("5gJMGxawUbdqfRpdVKj1eJrPfgMQ1Rrroa5WEoidLWQU");
 
@@ -31,5 +31,6 @@ pub struct MintNFT<'info> {
     #[account(mut)]
     pub token_account: Account<'info, TokenAccount>,
     
+    #[account(address = anchor_spl::token::ID)]
     pub token_program: Program<'info, Token>,
 }

@@ -2,8 +2,7 @@ import * as anchor from '@coral-xyz/anchor';
 import { Program } from '@coral-xyz/anchor';
 import {
     createMint,
-    getOrCreateAssociatedTokenAccount,
-    TOKEN_PROGRAM_ID
+    getOrCreateAssociatedTokenAccount
 } from '@solana/spl-token';
 import { Keypair, PublicKey, Signer } from '@solana/web3.js';
 import { NftFusionSolana } from '../target/types/nft_fusion_solana';
@@ -51,8 +50,7 @@ describe('nft-fusion-solana', () => {
             .accounts({
                 mint: mint,
                 signer: provider.wallet.publicKey,
-                tokenAccount: tokenAccount.address,
-                tokenProgram: TOKEN_PROGRAM_ID
+                tokenAccount: tokenAccount.address
             })
             .signers([])
             .rpc();
