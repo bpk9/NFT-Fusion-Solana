@@ -27,11 +27,17 @@ pub mod nft_fusion_solana {
         )?;
 
         // Mint the NFT 
-        token::mint_to(CpiContext::new(ctx.accounts.token_program.to_account_info(), MintTo {
-            mint: ctx.accounts.mint.to_account_info(),
-            to: ctx.accounts.token_account.to_account_info(),
-            authority: ctx.accounts.signer.to_account_info(),
-        }), 1)?;
+        token::mint_to(
+            CpiContext::new(
+                ctx.accounts.token_program.to_account_info(), 
+                MintTo {
+                    mint: ctx.accounts.mint.to_account_info(),
+                    to: ctx.accounts.token_account.to_account_info(),
+                    authority: ctx.accounts.signer.to_account_info(),
+                }
+            ), 
+            1
+        )?;
 
         Ok(())
     }
