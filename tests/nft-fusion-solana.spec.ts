@@ -1,7 +1,7 @@
 import * as anchor from '@coral-xyz/anchor';
 import { Program } from '@coral-xyz/anchor';
-import { createMint, getAssociatedTokenAddress } from '@solana/spl-token';
-import { Keypair, PublicKey, Signer } from '@solana/web3.js';
+import { getAssociatedTokenAddress } from '@solana/spl-token';
+import { Keypair, Signer } from '@solana/web3.js';
 import { NftFusionSolana } from '../target/types/nft_fusion_solana';
 
 const ONE_SOL: number = 1000000000;
@@ -24,18 +24,12 @@ describe('nft-fusion-solana', () => {
         );
         await provider.connection.confirmTransaction(airdropTx);
 
-        // Create a new mint account
-        const mint: PublicKey = await createMint(
-            provider.connection,
-            payer,
-            payer.publicKey, // mint authority
-            null, // freeze authority
-            0 // decimals
-        );
+        // Create a keypair for the mint account
+        const mint: Keypair = Keypair.generate();
 
         // Get the address of the token account that will hold the minted NFT
         const tokenAccount = await getAssociatedTokenAddress(
-            mint,
+            mint.publicKey,
             payer.publicKey
         );
 
@@ -43,11 +37,11 @@ describe('nft-fusion-solana', () => {
         const mintTx = await program.methods
             .mintNft()
             .accounts({
-                mint: mint,
+                mint: mint.publicKey,
                 signer: payer.publicKey,
                 tokenAccount: tokenAccount
             })
-            .signers([payer])
+            .signers([mint, payer])
             .rpc();
 
         console.log('Mint NFT transaction signature', mintTx);

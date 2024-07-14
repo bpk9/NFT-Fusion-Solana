@@ -1,7 +1,10 @@
-use anchor_lang::prelude::*;
+use anchor_lang::{
+    prelude::*,
+    system_program
+};
 use anchor_spl::{
     associated_token::{ self, AssociatedToken },
-    token::{ self, Mint, MintTo, Token }
+    token::{ self, MintTo, Token }
 };
 
 declare_id!("5gJMGxawUbdqfRpdVKj1eJrPfgMQ1Rrroa5WEoidLWQU");
@@ -11,6 +14,33 @@ pub mod nft_fusion_solana {
     use super::*;
 
     pub fn mint_nft(ctx: Context<MintNFT>) -> Result<()> {
+        // Create the Mint Account
+        system_program::create_account(
+            CpiContext::new(
+                ctx.accounts.token_program.to_account_info(),
+                system_program::CreateAccount {
+                    from: ctx.accounts.signer.to_account_info(), // BK TODO: Mint authority should be a pda
+                    to: ctx.accounts.mint.to_account_info(),
+                }
+            ),
+            Rent::get()?.minimum_balance(token::Mint::LEN),
+            token::Mint::LEN as u64,
+            &ctx.accounts.token_program.key
+        )?;
+
+        // Initialize the Mint Account
+        token::initialize_mint2(
+            CpiContext::new(
+                ctx.accounts.token_program.to_account_info(),
+                token::InitializeMint2 {
+                    mint: ctx.accounts.mint.to_account_info()
+                }
+            ),
+            0,
+            &ctx.accounts.signer.key, // BK TODO: Mint authority should be a pda
+            None
+        )?;
+
         // Create the Associated Token Account for the Signer
         associated_token::create(
             CpiContext::new(
@@ -48,8 +78,9 @@ pub struct MintNFT<'info> {
     #[account(address = anchor_spl::associated_token::ID)]
     pub associated_token_program: Program<'info, AssociatedToken>,
 
+    /// CHECK: This account is initialized by the program.
     #[account(mut)]
-    pub mint: Account<'info, Mint>,
+    pub mint: Signer<'info>,
 
     #[account(mut)]
     pub signer: Signer<'info>,
