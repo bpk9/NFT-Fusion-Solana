@@ -34,6 +34,13 @@ describe('nft-fusion-solana', () => {
                 program.programId
             );
 
+        // Derive the mint authority account
+        const [mintAuthority]: [PublicKey, number] =
+            await anchor.web3.PublicKey.findProgramAddress(
+                [payer.publicKey.toBuffer(), Buffer.from('nfs-mint-authority')],
+                program.programId
+            );
+
         // Get the address of the token account that will hold the minted NFT
         const tokenAccount = await getAssociatedTokenAddress(
             mint,
@@ -45,6 +52,7 @@ describe('nft-fusion-solana', () => {
             .mintNft()
             .accounts({
                 mint: mint,
+                mintAuthority: mintAuthority,
                 signer: payer.publicKey,
                 tokenAccount: tokenAccount
             })

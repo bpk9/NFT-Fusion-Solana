@@ -26,15 +26,17 @@ pub mod nft_fusion_solana {
             )
         )?;
 
-        // Mint the NFT 
+        // Mint the NFT
+        let mint_authority_seeds = &[ctx.accounts.signer.key.as_ref(), b"nfs-mint-authority", &[ctx.bumps.mint_authority]];;
         token::mint_to(
-            CpiContext::new(
+            CpiContext::new_with_signer(
                 ctx.accounts.token_program.to_account_info(), 
                 MintTo {
                     mint: ctx.accounts.mint.to_account_info(),
                     to: ctx.accounts.token_account.to_account_info(),
-                    authority: ctx.accounts.signer.to_account_info(),
-                }
+                    authority: ctx.accounts.mint_authority.to_account_info(),
+                },
+                &[&mint_authority_seeds[..]]
             ), 
             1
         )?;
@@ -54,9 +56,19 @@ pub struct MintNFT<'info> {
         seeds = [signer.key.as_ref(), b"nft-fusion-solana-mint"],
         bump,
         mint::decimals = 0,
-        mint::authority = signer,
+        mint::authority = mint_authority,
     )]
     pub mint: Account<'info, Mint>,
+
+    /// CHECK: This PDA is only used to mint the NFT.
+    #[account(
+        init,
+        payer = signer,
+        space = 0,
+        seeds = [signer.key.as_ref(), b"nfs-mint-authority"],
+        bump
+    )]
+    pub mint_authority: UncheckedAccount<'info>,
 
     #[account(mut)]
     pub signer: Signer<'info>,
