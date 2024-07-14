@@ -1,9 +1,6 @@
 import * as anchor from '@coral-xyz/anchor';
 import { Program } from '@coral-xyz/anchor';
-import {
-    createMint,
-    getOrCreateAssociatedTokenAccount
-} from '@solana/spl-token';
+import { createMint, getAssociatedTokenAddress } from '@solana/spl-token';
 import { Keypair, PublicKey, Signer } from '@solana/web3.js';
 import { NftFusionSolana } from '../target/types/nft_fusion_solana';
 
@@ -31,36 +28,33 @@ describe('nft-fusion-solana', () => {
         const mint: PublicKey = await createMint(
             provider.connection,
             payer,
-            provider.wallet.publicKey, // mint authority
+            payer.publicKey, // mint authority
             null, // freeze authority
             0 // decimals
         );
 
-        // Create a token account to hold the minted NFT
-        const tokenAccount = await getOrCreateAssociatedTokenAccount(
-            provider.connection,
-            payer,
+        // Get the address of the token account that will hold the minted NFT
+        const tokenAccount = await getAssociatedTokenAddress(
             mint,
-            provider.wallet.publicKey
+            payer.publicKey
         );
 
         // Mint the NFT
         const mintTx = await program.methods
-            .mint()
+            .mintNft()
             .accounts({
                 mint: mint,
-                signer: provider.wallet.publicKey,
-                tokenAccount: tokenAccount.address
+                signer: payer.publicKey,
+                tokenAccount: tokenAccount
             })
-            .signers([])
+            .signers([payer])
             .rpc();
 
         console.log('Mint NFT transaction signature', mintTx);
 
         // Fetch the token account to verify the minting
-        const accountInfo = await provider.connection.getTokenAccountBalance(
-            tokenAccount.address
-        );
+        const accountInfo =
+            await provider.connection.getTokenAccountBalance(tokenAccount);
         console.log('Token account info', accountInfo);
 
         // Assert that the token account has 1 token (the minted NFT)
