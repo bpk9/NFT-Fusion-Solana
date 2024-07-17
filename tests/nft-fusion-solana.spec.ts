@@ -10,20 +10,21 @@ describe('nft-fusion-solana', () => {
     // Configure the client to use the local cluster.
     anchor.setProvider(anchor.AnchorProvider.env());
 
+    const payer: Signer = Keypair.generate();
+    const provider: anchor.AnchorProvider = anchor.AnchorProvider.env();
     const program = anchor.workspace
         .NftFusionSolana as Program<NftFusionSolana>;
 
-    it('Mints an NFT', async () => {
-        const payer: Signer = Keypair.generate();
-        const provider: anchor.AnchorProvider = anchor.AnchorProvider.env();
-
+    beforeAll(async () => {
         // Fund the payer account
         const airdropTx = await provider.connection.requestAirdrop(
             payer.publicKey,
             ONE_SOL
         );
         await provider.connection.confirmTransaction(airdropTx);
+    });
 
+    it('Mints an NFT', async () => {
         // Derive the mint account
         const [mint]: [PublicKey, number] =
             await anchor.web3.PublicKey.findProgramAddress(
