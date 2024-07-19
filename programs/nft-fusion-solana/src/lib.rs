@@ -27,7 +27,7 @@ pub mod nft_fusion_solana {
         )?;
 
         // Mint the NFT
-        let mint_authority_seeds = &[ctx.accounts.signer.key.as_ref(), b"nfs-mint-authority", &[ctx.bumps.mint_authority]];;
+        let mint_authority_seeds = &[ctx.accounts.signer.key.as_ref(), b"nfs-mint-authority", &[ctx.bumps.mint_authority]];
         token::mint_to(
             CpiContext::new_with_signer(
                 ctx.accounts.token_program.to_account_info(), 
