@@ -213,7 +213,7 @@ pub struct Initialize<'info> {
     #[account(
         init,
         payer = signer,
-        seeds = [signer.key.as_ref(), b"nfs-collection-mint"],
+        seeds = [b"nfs-collection-mint"],
         bump,
         mint::decimals = 0,
         mint::authority = authority,
@@ -261,7 +261,7 @@ pub struct MintNFT<'info> {
     pub collection_metadata: UncheckedAccount<'info>,
 
     #[account(
-        seeds = [signer.key.as_ref(), b"nfs-collection-mint"],
+        seeds = [b"nfs-collection-mint"],
         bump
     )]
     pub collection_mint: Account<'info, Mint>,
@@ -277,7 +277,7 @@ pub struct MintNFT<'info> {
     #[account(
         init,
         payer = signer,
-        seeds = [signer.key.as_ref(), b"nfs-mint"],
+        seeds = [b"nfs-mint"],
         bump,
         mint::decimals = 0,
         mint::authority = authority,

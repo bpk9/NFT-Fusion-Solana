@@ -48,7 +48,7 @@ describe('nft-fusion-solana', () => {
 
         // Derive the collection mint account
         [collectionMint] = await anchor.web3.PublicKey.findProgramAddress(
-            [payer.publicKey.toBuffer(), Buffer.from('nfs-collection-mint')],
+            [Buffer.from('nfs-collection-mint')],
             program.programId
         );
 
@@ -125,7 +125,7 @@ describe('nft-fusion-solana', () => {
         // Derive the mint account
         const [mint]: [PublicKey, number] =
             await anchor.web3.PublicKey.findProgramAddress(
-                [payer.publicKey.toBuffer(), Buffer.from('nfs-mint')],
+                [Buffer.from('nfs-mint')],
                 program.programId
             );
 
