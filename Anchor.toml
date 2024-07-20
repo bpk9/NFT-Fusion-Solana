@@ -13,3 +13,7 @@ wallet = "/Users/briankasper/.config/solana/id.json"
 
 [scripts]
 test = "yarn run jest --preset ts-jest"
+
+[[test.genesis]]
+address = "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"
+program = ".anchor/metaplex.so"
