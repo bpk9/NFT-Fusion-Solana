@@ -12,6 +12,9 @@ import { getAssociatedTokenAddress } from '@solana/spl-token';
 import { Keypair, PublicKey, Signer } from '@solana/web3.js';
 import { NftFusionSolana } from '../target/types/nft_fusion_solana';
 
+const COLLECTION_NAME: string = 'NFT Fusion Solana';
+const COLLECTION_SYMBOL: string = 'NFS';
+const CREATOR_ADDRESS: string = 'LFujUyg8wPiwqt2DFGdSe6wApqwNvpf4zdMebdPVMbz';
 const ONE_SOL: number = 1000000000;
 const IPFS_CID: string = 'CID'; // Mock IPFS CID
 
@@ -24,6 +27,11 @@ describe('nft-fusion-solana', () => {
     const program = anchor.workspace
         .NftFusionSolana as Program<NftFusionSolana>;
 
+    let authority: PublicKey;
+    let collectionMasterEdition: PublicKey;
+    let collectionMetadata: PublicKey;
+    let collectionMint: PublicKey;
+
     beforeAll(async () => {
         // Fund the payer account
         const airdropTx = await provider.connection.requestAirdrop(
@@ -31,20 +39,93 @@ describe('nft-fusion-solana', () => {
             ONE_SOL
         );
         await provider.connection.confirmTransaction(airdropTx);
+
+        // Derive the authority account
+        [authority] = await anchor.web3.PublicKey.findProgramAddress(
+            [payer.publicKey.toBuffer(), Buffer.from('nfs-authority')],
+            program.programId
+        );
+
+        // Derive the collection mint account
+        [collectionMint] = await anchor.web3.PublicKey.findProgramAddress(
+            [payer.publicKey.toBuffer(), Buffer.from('nfs-collection-mint')],
+            program.programId
+        );
+
+        // Derive the collection master edition account
+        const mplTokenMetadataProgram = new anchor.web3.PublicKey(
+            MPL_TOKEN_METADATA_PROGRAM_ID
+        );
+        [collectionMasterEdition] =
+            await anchor.web3.PublicKey.findProgramAddress(
+                [
+                    Buffer.from('metadata'),
+                    mplTokenMetadataProgram.toBuffer(),
+                    collectionMint.toBuffer(),
+                    Buffer.from('edition')
+                ],
+                mplTokenMetadataProgram
+            );
+
+        // Derive the collection metadata account
+        [collectionMetadata] = await anchor.web3.PublicKey.findProgramAddress(
+            [
+                Buffer.from('metadata'),
+                mplTokenMetadataProgram.toBuffer(),
+                collectionMint.toBuffer()
+            ],
+            mplTokenMetadataProgram
+        );
+    });
+
+    it('Initializes the collection', async () => {
+        // Get the address of the token account that will hold the minted NFT collection
+        const tokenAccount = await getAssociatedTokenAddress(
+            collectionMint,
+            payer.publicKey
+        );
+
+        // Mint the NFT collection
+        const mintTx = await program.methods
+            .initialize(IPFS_CID)
+            .accounts({
+                authority: authority,
+                collectionMasterEdition: collectionMasterEdition,
+                collectionMetadata: collectionMetadata,
+                collectionMint: collectionMint,
+                metadataProgram: MPL_TOKEN_METADATA_PROGRAM_ID,
+                signer: payer.publicKey,
+                tokenAccount: tokenAccount
+            })
+            .signers([payer])
+            .rpc();
+
+        console.log('Mint NFT collection transaction signature', mintTx);
+
+        // Fetch the on-chain metadata
+        const { data: metadataAccountData } =
+            await provider.connection.getAccountInfo(collectionMetadata);
+        const onChainMetadata =
+            getMetadataAccountDataSerializer().deserialize(
+                metadataAccountData
+            )[0];
+
+        // Assert that the on-chain metadata matches the expected metadata
+        expect(onChainMetadata.name).toBe(COLLECTION_NAME);
+        expect(onChainMetadata.symbol).toBe(COLLECTION_SYMBOL);
+        expect(onChainMetadata.uri).toBe(
+            `https://mygateway.mypinata.cloud/ipfs/${IPFS_CID}`
+        );
     });
 
     it('Mints an NFT', async () => {
+        const NFT_1_NAME: string = '#1';
+        const NFT_2_NAME: string = '#2';
+
         // Derive the mint account
         const [mint]: [PublicKey, number] =
             await anchor.web3.PublicKey.findProgramAddress(
                 [payer.publicKey.toBuffer(), Buffer.from('nfs-mint')],
-                program.programId
-            );
-
-        // Derive the mint authority account
-        const [authority]: [PublicKey, number] =
-            await anchor.web3.PublicKey.findProgramAddress(
-                [payer.publicKey.toBuffer(), Buffer.from('nfs-authority')],
                 program.programId
             );
 
@@ -70,9 +151,12 @@ describe('nft-fusion-solana', () => {
 
         // Mint the NFT
         const mintTx = await program.methods
-            .mintNft(IPFS_CID)
+            .mintNft(IPFS_CID, NFT_1_NAME, NFT_2_NAME)
             .accounts({
                 authority: authority,
+                collectionMasterEdition: collectionMasterEdition,
+                collectionMetadata: collectionMetadata,
+                collectionMint: collectionMint,
                 metadata: metadata,
                 metadataProgram: MPL_TOKEN_METADATA_PROGRAM_ID,
                 mint: mint,
@@ -109,8 +193,8 @@ describe('nft-fusion-solana', () => {
         const uses = (onChainMetadata.uses as any).value as Uses;
 
         // Assert that the on-chain metadata matches the expected metadata
-        expect(onChainMetadata.name).toBe('#1');
-        expect(onChainMetadata.symbol).toBe('NFS');
+        expect(onChainMetadata.name).toBe(`${NFT_1_NAME} + ${NFT_2_NAME}`);
+        expect(onChainMetadata.symbol).toBe(COLLECTION_SYMBOL);
         expect(onChainMetadata.uri).toBe(
             `https://mygateway.mypinata.cloud/ipfs/${IPFS_CID}`
         );
@@ -119,14 +203,13 @@ describe('nft-fusion-solana', () => {
         expect(creators[0].address.toString()).toBe(authority.toString());
         expect(creators[0].verified).toBe(true);
         expect(creators[0].share).toBe(0);
-        expect(creators[1].address.toString()).toBe(
-            'LFujUyg8wPiwqt2DFGdSe6wApqwNvpf4zdMebdPVMbz'
-        );
+        expect(creators[1].address.toString()).toBe(CREATOR_ADDRESS);
         expect(creators[1].verified).toBe(false);
         expect(creators[1].share).toBe(100);
         expect(onChainMetadata.isMutable).toBe(false);
         expect(tokenStandard).toBe(1); // BK TODO: Make this a pNFT
-        expect(collection).toBe(undefined);
+        expect(collection.key).toBe(collectionMint.toString());
+        expect(collection.verified).toBe(false);
         expect(uses).toBe(undefined);
     });
 });
