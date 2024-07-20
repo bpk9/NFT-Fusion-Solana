@@ -13,6 +13,7 @@ import { Keypair, PublicKey, Signer } from '@solana/web3.js';
 import { NftFusionSolana } from '../target/types/nft_fusion_solana';
 
 const ONE_SOL: number = 1000000000;
+const IPFS_CID: string = 'CID'; // Mock IPFS CID
 
 describe('nft-fusion-solana', () => {
     // Configure the client to use the local cluster.
@@ -69,7 +70,7 @@ describe('nft-fusion-solana', () => {
 
         // Mint the NFT
         const mintTx = await program.methods
-            .mintNft()
+            .mintNft(IPFS_CID)
             .accounts({
                 authority: authority,
                 metadata: metadata,
@@ -110,7 +111,9 @@ describe('nft-fusion-solana', () => {
         // Assert that the on-chain metadata matches the expected metadata
         expect(onChainMetadata.name).toBe('#1');
         expect(onChainMetadata.symbol).toBe('NFS');
-        expect(onChainMetadata.uri).toBe('https://example.com/nft-metadata');
+        expect(onChainMetadata.uri).toBe(
+            `https://mygateway.mypinata.cloud/ipfs/${IPFS_CID}`
+        );
         expect(onChainMetadata.sellerFeeBasisPoints).toBe(500); // 5%
         expect(creators).toHaveLength(2);
         expect(creators[0].address.toString()).toBe(authority.toString());

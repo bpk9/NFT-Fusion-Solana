@@ -16,7 +16,7 @@ declare_id!("5gJMGxawUbdqfRpdVKj1eJrPfgMQ1Rrroa5WEoidLWQU");
 pub mod nft_fusion_solana {
     use super::*;
 
-    pub fn mint_nft(ctx: Context<MintNFT>) -> Result<()> {
+    pub fn mint_nft(ctx: Context<MintNFT>, cid: String) -> Result<()> {
         // Derive the seeds for the authority PDA
         let authority_seeds = &[ctx.accounts.signer.key.as_ref(), b"nfs-authority", &[ctx.bumps.authority]];
 
@@ -54,7 +54,7 @@ pub mod nft_fusion_solana {
             .data(DataV2 {
                 name: "#1".to_string(), // BK TODO: Auto-increment name
                 symbol: "NFS".to_string(),
-                uri: "https://example.com/nft-metadata".to_string(), // BK TODO: Add URI Metadata via IPFS
+                uri: format!("https://mygateway.mypinata.cloud/ipfs/{}", cid),
                 seller_fee_basis_points: 500, // 5%
                 creators: Some(vec![
                     Creator {
