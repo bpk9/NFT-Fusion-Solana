@@ -107,7 +107,17 @@ pub mod nft_fusion_solana {
     }
 
     pub fn mint_nft(ctx: Context<MintNFT>, cid: String, nft_1: u16, nft_2: u16) -> Result<()> {
-        // Check if either NFT ID is out of range
+        // Ensure NFT IDs are not equal
+        if nft_1 == nft_2 {
+            return Err(NftFusionError::NFTIDEqual.into());
+        }
+        
+        // Ensure NFT 1 is less than NFT 2
+        if nft_1 > nft_2 {
+            return Err(NftFusionError::NFTIDOutOfOrder.into());
+        }
+        
+        // Ensure both NFT IDs are within the valid range
         if nft_1 < MIN_NFT_ID || nft_1 > MAX_NFT_ID || nft_2 < MIN_NFT_ID || nft_2 > MAX_NFT_ID {
             return Err(NftFusionError::NFTIDOutOfRange.into());
         }
@@ -310,6 +320,12 @@ pub struct MintNFT<'info> {
 // Error codes
 #[error_code]
 pub enum NftFusionError {
+    #[msg("NFT IDs can not be equal")]
+    NFTIDEqual,
+
+    #[msg("NFT 1 must be less than NFT 2")]
+    NFTIDOutOfOrder,
+
     #[msg(format!("NFT IDs must be between {} and {}.", MIN_NFT_ID, MAX_NFT_ID))]
     NFTIDOutOfRange,
 }

@@ -228,41 +228,80 @@ describe('nft-fusion-solana', () => {
 
     it('Does not allow duplicate NFTs', async () => {
         let error = false;
+
         try {
             await mintNft(1, 2);
         } catch {
             error = true;
         }
+
         expect(error).toBe(true);
     });
 
     it(`Does not allow NFT IDs over ${MAX_NFT_ID}`, async () => {
         let error = false;
+
         try {
             await mintNft(1, MAX_NFT_ID + 1);
-        } catch {
+        } catch (e) {
             error = true;
+            expect(e.error.errorCode.code).toBe('NFTIDOutOfRange');
         }
+
         expect(error).toBe(true);
     });
 
     it(`Does not allow NFT IDs below ${MIN_NFT_ID}`, async () => {
         let error = false;
+
         try {
             await mintNft(MIN_NFT_ID - 1, 2);
-        } catch {
+        } catch (e) {
             error = true;
+            expect(e.error.errorCode.code).toBe('NFTIDOutOfRange');
         }
+
         expect(error).toBe(true);
     });
 
     it('Does not allow NFT IDs below 0', async () => {
         let error = false;
+
         try {
             await mintNft(-1, 2);
-        } catch {
+        } catch (e) {
             error = true;
+            expect(e.message).toBe(
+                'The value of "value" is out of range. It must be >= 0 and <= 65535. Received -1'
+            );
         }
+
+        expect(error).toBe(true);
+    });
+
+    it('Does not allow NFT IDs to be equal', async () => {
+        let error = false;
+
+        try {
+            await mintNft(1, 1);
+        } catch (e) {
+            error = true;
+            expect(e.error.errorCode.code).toBe('NFTIDEqual');
+        }
+
+        expect(error).toBe(true);
+    });
+
+    it('Does not allow NFT 1 to be greater than to NFT 2', async () => {
+        let error = false;
+
+        try {
+            await mintNft(2, 1);
+        } catch (e) {
+            error = true;
+            expect(e.error.errorCode.code).toBe('NFTIDOutOfOrder');
+        }
+
         expect(error).toBe(true);
     });
 });
