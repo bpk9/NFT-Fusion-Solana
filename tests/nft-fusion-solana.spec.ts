@@ -15,6 +15,8 @@ import { NftFusionSolana } from '../target/types/nft_fusion_solana';
 const COLLECTION_NAME: string = 'NFT Fusion Solana';
 const COLLECTION_SYMBOL: string = 'NFS';
 const CREATOR_ADDRESS: string = 'LFujUyg8wPiwqt2DFGdSe6wApqwNvpf4zdMebdPVMbz';
+const MAX_NFT_ID: number = 1000;
+const MIN_NFT_ID: number = 1;
 const ONE_SOL: number = 1000000000;
 const IPFS_CID: string = 'CID'; // Mock IPFS CID
 
@@ -228,6 +230,36 @@ describe('nft-fusion-solana', () => {
         let error = false;
         try {
             await mintNft(1, 2);
+        } catch {
+            error = true;
+        }
+        expect(error).toBe(true);
+    });
+
+    it(`Does not allow NFT IDs over ${MAX_NFT_ID}`, async () => {
+        let error = false;
+        try {
+            await mintNft(1, MAX_NFT_ID + 1);
+        } catch {
+            error = true;
+        }
+        expect(error).toBe(true);
+    });
+
+    it(`Does not allow NFT IDs below ${MIN_NFT_ID}`, async () => {
+        let error = false;
+        try {
+            await mintNft(MIN_NFT_ID - 1, 2);
+        } catch {
+            error = true;
+        }
+        expect(error).toBe(true);
+    });
+
+    it('Does not allow NFT IDs below 0', async () => {
+        let error = false;
+        try {
+            await mintNft(-1, 2);
         } catch {
             error = true;
         }

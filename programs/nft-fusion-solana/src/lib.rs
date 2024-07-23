@@ -21,6 +21,8 @@ pub mod nft_fusion_solana {
     const COLLECTION_NAME: &str = "NFT Fusion Solana";
     const COLLECTION_SYMBOL: &str = "NFS";
     const CREATOR_ADDRESS: &str = "LFujUyg8wPiwqt2DFGdSe6wApqwNvpf4zdMebdPVMbz";
+    const MAX_NFT_ID: u16 = 1000;
+    const MIN_NFT_ID: u16 = 1;
 
     pub fn initialize(ctx: Context<Initialize>, cid: String) -> Result<()> {
         // BK TODO: Ensure the program isn't already initialized
@@ -105,6 +107,11 @@ pub mod nft_fusion_solana {
     }
 
     pub fn mint_nft(ctx: Context<MintNFT>, cid: String, nft_1: u16, nft_2: u16) -> Result<()> {
+        // Check if either NFT ID is out of range
+        if nft_1 < MIN_NFT_ID || nft_1 > MAX_NFT_ID || nft_2 < MIN_NFT_ID || nft_2 > MAX_NFT_ID {
+            return Err(NftFusionError::NFTIDOutOfRange.into());
+        }
+
         // Derive the seeds for the authority PDA
         let authority_seeds = &[ctx.accounts.signer.key.as_ref(), b"nfs-authority", &[ctx.bumps.authority]];
 
@@ -298,4 +305,11 @@ pub struct MintNFT<'info> {
     
     #[account(address = anchor_spl::token::ID)]
     pub token_program: Program<'info, Token>,
+}
+
+// Error codes
+#[error_code]
+pub enum NftFusionError {
+    #[msg(format!("NFT IDs must be between {} and {}.", MIN_NFT_ID, MAX_NFT_ID))]
+    NFTIDOutOfRange,
 }
