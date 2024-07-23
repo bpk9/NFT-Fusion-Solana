@@ -212,7 +212,7 @@ describe('nft-fusion-solana', () => {
         expect(onChainMetadata.isMutable).toBe(false);
         expect(tokenStandard).toBe(1); // BK TODO: Make this a pNFT
         expect(collection.key).toBe(collectionMint.toString());
-        expect(collection.verified).toBe(false);
+        expect(collection.verified).toBe(true);
         expect(uses).toBe(undefined);
     };
 

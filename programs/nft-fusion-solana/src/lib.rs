@@ -6,7 +6,7 @@ use {
     },
     mpl_token_metadata::{
         ID as TOKEN_METADATA_ID,
-        instructions::{ CreateMasterEditionV3CpiBuilder, CreateMetadataAccountV3CpiBuilder }, 
+        instructions::{ CreateMasterEditionV3CpiBuilder, CreateMetadataAccountV3CpiBuilder, SetAndVerifyCollectionCpiBuilder }, 
         types::{ Collection, Creator, DataV2 }
     }
 };
@@ -91,6 +91,7 @@ pub mod nft_fusion_solana {
         // Create the Master Edition NFT
         CreateMasterEditionV3CpiBuilder::new(&ctx.accounts.metadata_program.to_account_info())
             .edition(&ctx.accounts.collection_master_edition.to_account_info())
+            .max_supply(0)
             .metadata(&ctx.accounts.collection_metadata.to_account_info())
             .mint(&ctx.accounts.collection_mint.to_account_info())
             .mint_authority(&ctx.accounts.authority.to_account_info())
@@ -171,15 +172,15 @@ pub mod nft_fusion_solana {
             .invoke_signed(&[&authority_seeds[..]])?;
 
         // BK TODO: Verify the NFT Collection
-        // SetAndVerifyCollectionCpiBuilder::new(&ctx.accounts.metadata_program.to_account_info())
-        //     .collection(&ctx.accounts.collection_metadata.to_account_info())
-        //     .collection_authority(&ctx.accounts.authority.to_account_info())
-        //     .collection_master_edition_account(&ctx.accounts.collection_master_edition.to_account_info())
-        //     .collection_mint(&ctx.accounts.collection_mint.to_account_info())
-        //     .metadata(&ctx.accounts.metadata.to_account_info())
-        //     .payer(&ctx.accounts.signer.to_account_info())
-        //     .update_authority(&ctx.accounts.authority.to_account_info())
-        //     .invoke_signed(&[&authority_seeds[..]])?;
+        SetAndVerifyCollectionCpiBuilder::new(&ctx.accounts.metadata_program.to_account_info())
+            .collection(&ctx.accounts.collection_metadata.to_account_info())
+            .collection_authority(&ctx.accounts.authority.to_account_info())
+            .collection_master_edition_account(&ctx.accounts.collection_master_edition.to_account_info())
+            .collection_mint(&ctx.accounts.collection_mint.to_account_info())
+            .metadata(&ctx.accounts.metadata.to_account_info())
+            .payer(&ctx.accounts.signer.to_account_info())
+            .update_authority(&ctx.accounts.authority.to_account_info())
+            .invoke_signed(&[&authority_seeds[..]])?;
 
         // BK TODO: Create the master edition account
 
@@ -247,6 +248,7 @@ pub struct MintNFT<'info> {
 
     /// CHECK: This PDA is only used as the mint/update authority of the NFT.
     #[account(
+        mut,
         seeds = [signer.key.as_ref(), b"nfs-authority"],
         bump
     )]
