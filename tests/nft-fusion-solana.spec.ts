@@ -118,14 +118,14 @@ describe('nft-fusion-solana', () => {
         );
     });
 
-    it('Mints an NFT', async () => {
-        const NFT_1_NAME: string = '#1';
-        const NFT_2_NAME: string = '#2';
-
+    const mintNft = async (nft1: number, nft2: number) => {
         // Derive the mint account
         const [mint]: [PublicKey, number] =
-            await anchor.web3.PublicKey.findProgramAddress(
-                [Buffer.from('nfs-mint')],
+            anchor.web3.PublicKey.findProgramAddressSync(
+                [
+                    new anchor.BN(nft1).toBuffer('be', 2),
+                    new anchor.BN(nft2).toBuffer('be', 2)
+                ],
                 program.programId
             );
 
@@ -151,7 +151,7 @@ describe('nft-fusion-solana', () => {
 
         // Mint the NFT
         const mintTx = await program.methods
-            .mintNft(IPFS_CID, NFT_1_NAME, NFT_2_NAME)
+            .mintNft(IPFS_CID, nft1, nft2)
             .accounts({
                 authority: authority,
                 collectionMasterEdition: collectionMasterEdition,
@@ -166,7 +166,10 @@ describe('nft-fusion-solana', () => {
             .signers([payer])
             .rpc();
 
-        console.log('Mint NFT transaction signature', mintTx);
+        console.log(
+            `Mint NFT transaction signature for #${nft1} + #${nft2}`,
+            mintTx
+        );
 
         // Fetch the token account to verify the minting
         const accountInfo =
@@ -193,7 +196,7 @@ describe('nft-fusion-solana', () => {
         const uses = (onChainMetadata.uses as any).value as Uses;
 
         // Assert that the on-chain metadata matches the expected metadata
-        expect(onChainMetadata.name).toBe(`${NFT_1_NAME} + ${NFT_2_NAME}`);
+        expect(onChainMetadata.name).toBe(`#${nft1} + #${nft2}`);
         expect(onChainMetadata.symbol).toBe(COLLECTION_SYMBOL);
         expect(onChainMetadata.uri).toBe(
             `https://mygateway.mypinata.cloud/ipfs/${IPFS_CID}`
@@ -211,5 +214,13 @@ describe('nft-fusion-solana', () => {
         expect(collection.key).toBe(collectionMint.toString());
         expect(collection.verified).toBe(false);
         expect(uses).toBe(undefined);
+    };
+
+    it('Mints an NFT', async () => {
+        await mintNft(1, 2);
+    });
+
+    it('Mints a second NFT', async () => {
+        await mintNft(2, 3);
     });
 });

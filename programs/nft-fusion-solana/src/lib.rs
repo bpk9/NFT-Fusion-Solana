@@ -103,7 +103,7 @@ pub mod nft_fusion_solana {
         Ok(())
     }
 
-    pub fn mint_nft(ctx: Context<MintNFT>, cid: String, nft_1_name: String, nft_2_name: String) -> Result<()> {
+    pub fn mint_nft(ctx: Context<MintNFT>, cid: String, nft_1: u16, nft_2: u16) -> Result<()> {
         // Derive the seeds for the authority PDA
         let authority_seeds = &[ctx.accounts.signer.key.as_ref(), b"nfs-authority", &[ctx.bumps.authority]];
 
@@ -139,7 +139,7 @@ pub mod nft_fusion_solana {
         // Create the Metadata Account
         CreateMetadataAccountV3CpiBuilder::new(&ctx.accounts.metadata_program.to_account_info())
             .data(DataV2 {
-                name: format!("{} + {}", nft_1_name, nft_2_name),
+                name: format!("#{} + #{}", nft_1, nft_2),
                 symbol: COLLECTION_SYMBOL.to_string(),
                 uri: format!("{}{}", BASE_URI, cid),
                 seller_fee_basis_points: 500, // 5%
@@ -240,7 +240,7 @@ pub struct Initialize<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(nft_1_name: String, nft_2_name: String)]
+#[instruction(cid: String, nft_1: u16, nft_2: u16)]
 pub struct MintNFT<'info> {
     #[account(address = anchor_spl::associated_token::ID)]
     pub associated_token_program: Program<'info, AssociatedToken>,
@@ -277,7 +277,7 @@ pub struct MintNFT<'info> {
     #[account(
         init,
         payer = signer,
-        seeds = [b"nfs-mint"],
+        seeds = [nft_1.to_be_bytes().as_ref(), nft_2.to_be_bytes().as_ref()],
         bump,
         mint::decimals = 0,
         mint::authority = authority,
