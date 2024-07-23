@@ -223,4 +223,14 @@ describe('nft-fusion-solana', () => {
     it('Mints a second NFT', async () => {
         await mintNft(2, 3);
     });
+
+    it('Does not allow duplicate NFTs', async () => {
+        let error = false;
+        try {
+            await mintNft(1, 2);
+        } catch {
+            error = true;
+        }
+        expect(error).toBe(true);
+    });
 });
