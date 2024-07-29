@@ -2,11 +2,12 @@ use {
     anchor_lang::prelude::*,
     anchor_spl::{
         associated_token::{ self, AssociatedToken },
-        token::{ self, Mint, MintTo, Token }
+        token::{ self, Mint, MintTo, Token, TokenAccount }
     },
     mpl_token_metadata::{
         ID as TOKEN_METADATA_ID,
-        instructions::{ CreateMasterEditionV3CpiBuilder, CreateMetadataAccountV3CpiBuilder, SetAndVerifyCollectionCpiBuilder }, 
+        accounts::Metadata,
+        instructions::{ CreateMasterEditionV3CpiBuilder, CreateMetadataAccountV3CpiBuilder, SetAndVerifyCollectionCpiBuilder },
         types::{ Collection, Creator, DataV2 }
     }
 };
@@ -18,17 +19,18 @@ pub mod nft_fusion_solana {
     use super::*;
 
     const BASE_URI: &str = "https://mygateway.mypinata.cloud/ipfs/";
-    const COLLECTION_NAME: &str = "NFT Fusion Solana";
-    const COLLECTION_SYMBOL: &str = "NFS";
+    const COLLECTION_NAME: &str = "Child Collection";
+    const COLLECTION_SYMBOL: &str = "CC";
     const CREATOR_ADDRESS: &str = "LFujUyg8wPiwqt2DFGdSe6wApqwNvpf4zdMebdPVMbz";
     const MAX_NFT_ID: u16 = 1000;
     const MIN_NFT_ID: u16 = 1;
+    // pub const PARENT_COLLECTION_MINT: &str = "J1S9H3QjnRtBbbuD4HjPV6RpRhwuk4zKbxsnCHuTgh9w";
 
     pub fn initialize(ctx: Context<Initialize>, cid: String) -> Result<()> {
-        // BK TODO: Ensure the program isn't already initialized
+        // TODO: Ensure the program isn't already initialized
 
         // Derive the Seeds for the Authority PDA
-        let authority_seeds = &[ctx.accounts.signer.key.as_ref(), b"nfs-authority", &[ctx.bumps.authority]];
+        let authority_seeds = &[ctx.accounts.signer.key.as_ref(), b"authority", &[ctx.bumps.authority]];
 
         // Create the Associated Token Account for the Authority
         associated_token::create(
@@ -122,8 +124,46 @@ pub mod nft_fusion_solana {
             return Err(NftFusionError::NFTIDOutOfRange.into());
         }
 
+        // Check that the ATA Owner is the signer
+        if ctx.accounts.nft_1_token_account.owner != ctx.accounts.signer.key() || ctx.accounts.nft_2_token_account.owner != ctx.accounts.signer.key() {
+            return Err(NftFusionError::TokenAccountIncorrectOwner.into());
+        }
+
+        // Check if the signer owns both NFTs
+        if ctx.accounts.nft_1_token_account.amount == 0 || ctx.accounts.nft_2_token_account.amount == 0 {
+            return Err(NftFusionError::NFTNotOwned.into());
+        }
+
+        // Extract metadata for Parent Collection
+        let parent_collection_mint = ctx.accounts.parent_collection_mint.to_account_info().key();
+
+        // Extract metadata for NFT 1
+        let nft_1_metadata = Metadata::safe_deserialize(&ctx.accounts.nft_1_metadata.to_account_info().data.borrow())?;
+        let nft_1_mint = nft_1_metadata.mint;
+        let nft_1_collection = nft_1_metadata.collection.as_ref().unwrap();
+
+        // Extract metadata for NFT 2
+        let nft_2_metadata = Metadata::safe_deserialize(&ctx.accounts.nft_2_metadata.to_account_info().data.borrow())?;
+        let nft_2_mint = nft_2_metadata.mint;
+        let nft_2_collection = nft_2_metadata.collection.as_ref().unwrap();
+        
+        // Check in the metaplex metadata if collection.key=PARENT_COLLECTION_MINT
+        if nft_1_collection.key != parent_collection_mint || nft_2_collection.key != parent_collection_mint {
+            return Err(NftFusionError::MetadataCollectionIncorrect.into());
+        }
+
+        // Check in the metaplex metadata if collection.verified=true
+        if !nft_1_collection.verified || !nft_2_collection.verified {
+            return Err(NftFusionError::MetadataCollectionNotVerified.into());
+        }
+
+        // Check that the mint from the ATA is the same as the mint on the metadata
+        if ctx.accounts.nft_1_token_account.mint != nft_1_mint || ctx.accounts.nft_2_token_account.mint != nft_2_mint {
+            return Err(NftFusionError::MetadataIncorrect.into());
+        }
+        
         // Derive the seeds for the authority PDA
-        let authority_seeds = &[ctx.accounts.signer.key.as_ref(), b"nfs-authority", &[ctx.bumps.authority]];
+        let authority_seeds = &[ctx.accounts.signer.key.as_ref(), b"authority", &[ctx.bumps.authority]];
 
         // Create the Associated Token Account for the Signer
         associated_token::create(
@@ -174,7 +214,7 @@ pub mod nft_fusion_solana {
                     }
                 ]),
                 collection: Some(Collection {
-                    key: ctx.accounts.collection_mint.key(),
+                    key: ctx.accounts.child_collection_mint.key(),
                     verified: false
                 }),
                 uses: None,
@@ -188,18 +228,18 @@ pub mod nft_fusion_solana {
             .update_authority(&ctx.accounts.authority.to_account_info(), true)
             .invoke_signed(&[&authority_seeds[..]])?;
 
-        // BK TODO: Verify the NFT Collection
+        // Verify the NFT Collection
         SetAndVerifyCollectionCpiBuilder::new(&ctx.accounts.metadata_program.to_account_info())
-            .collection(&ctx.accounts.collection_metadata.to_account_info())
+            .collection(&ctx.accounts.child_collection_metadata.to_account_info())
             .collection_authority(&ctx.accounts.authority.to_account_info())
-            .collection_master_edition_account(&ctx.accounts.collection_master_edition.to_account_info())
-            .collection_mint(&ctx.accounts.collection_mint.to_account_info())
+            .collection_master_edition_account(&ctx.accounts.child_collection_master_edition.to_account_info())
+            .collection_mint(&ctx.accounts.child_collection_mint.to_account_info())
             .metadata(&ctx.accounts.metadata.to_account_info())
             .payer(&ctx.accounts.signer.to_account_info())
             .update_authority(&ctx.accounts.authority.to_account_info())
             .invoke_signed(&[&authority_seeds[..]])?;
 
-        // BK TODO: Create the master edition account
+        // TODO: Create the master edition account
 
         Ok(())
     }
@@ -215,7 +255,7 @@ pub struct Initialize<'info> {
         init,
         payer = signer,
         space = 0,
-        seeds = [signer.key.as_ref(), b"nfs-authority"],
+        seeds = [signer.key.as_ref(), b"authority"],
         bump
     )]
     pub authority: UncheckedAccount<'info>,
@@ -231,7 +271,7 @@ pub struct Initialize<'info> {
     #[account(
         init,
         payer = signer,
-        seeds = [b"nfs-collection-mint"],
+        seeds = [b"child-collection-mint"],
         bump,
         mint::decimals = 0,
         mint::authority = authority,
@@ -266,24 +306,24 @@ pub struct MintNFT<'info> {
     /// CHECK: This PDA is only used as the mint/update authority of the NFT.
     #[account(
         mut,
-        seeds = [signer.key.as_ref(), b"nfs-authority"],
+        seeds = [signer.key.as_ref(), b"authority"],
         bump
     )]
     pub authority: UncheckedAccount<'info>,
 
     /// CHECK: This PDA is initialized and checked by the program.
     #[account(mut)]
-    pub collection_master_edition: UncheckedAccount<'info>,
+    pub child_collection_master_edition: UncheckedAccount<'info>,
 
     /// CHECK: This PDA is initialized and checked by the program.
     #[account(mut)]
-    pub collection_metadata: UncheckedAccount<'info>,
+    pub child_collection_metadata: UncheckedAccount<'info>,
 
     #[account(
-        seeds = [b"nfs-collection-mint"],
+        seeds = [b"child-collection-mint"],
         bump
     )]
-    pub collection_mint: Account<'info, Mint>,
+    pub child_collection_mint: Account<'info, Mint>,
 
     /// CHECK: This PDA is initialized and checked by the program.
     #[account(mut)]
@@ -303,6 +343,21 @@ pub struct MintNFT<'info> {
     )]
     pub mint: Account<'info, Mint>,
 
+    /// CHECK: This account is checked by the program.
+    pub nft_1_metadata: UncheckedAccount<'info>,
+
+    #[account(constraint = nft_1_token_account.owner == signer.key())]
+    pub nft_1_token_account: Account<'info, TokenAccount>,
+    
+    /// CHECK: This account is checked by the program.
+    pub nft_2_metadata: UncheckedAccount<'info>,
+
+    #[account(constraint = nft_2_token_account.owner == signer.key())]
+    pub nft_2_token_account: Account<'info, TokenAccount>,
+
+    // TODO: This is only needed for testing purposes. This should be hard-coded.
+    pub parent_collection_mint: Account<'info, Mint>,
+
     #[account(mut)]
     pub signer: Signer<'info>,
     
@@ -320,12 +375,27 @@ pub struct MintNFT<'info> {
 // Error codes
 #[error_code]
 pub enum NftFusionError {
+    #[msg("One or more of the provided metadata accounts does not belong to the parent collection")]
+    MetadataCollectionIncorrect,
+
+    #[msg("One or more of the provided metadata accounts contains an unverified collection")]
+    MetadataCollectionNotVerified,
+
+    #[msg("One or more of the provided metadata accounts does not match the associated token account")]
+    MetadataIncorrect,
+
     #[msg("NFT IDs can not be equal")]
     NFTIDEqual,
+
+    #[msg("User does not own the provided NFTs")]
+    NFTNotOwned,
 
     #[msg("NFT 1 must be less than NFT 2")]
     NFTIDOutOfOrder,
 
     #[msg(format!("NFT IDs must be between {} and {}.", MIN_NFT_ID, MAX_NFT_ID))]
     NFTIDOutOfRange,
+
+    #[msg("One or more of the token accounts does not belong to the signer")]
+    TokenAccountIncorrectOwner
 }
